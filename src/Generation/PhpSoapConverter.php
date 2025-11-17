@@ -1,7 +1,8 @@
 <?php
 namespace GoetasWebservices\WsdlToPhp\Generation;
 
-use Doctrine\Common\Inflector\Inflector;
+use Doctrine\Inflector\Inflector;
+use Doctrine\Inflector\InflectorFactory;
 use Exception;
 use GoetasWebservices\XML\SOAPReader\Soap\OperationMessage;
 use GoetasWebservices\XML\SOAPReader\Soap\Service;
@@ -15,9 +16,12 @@ class PhpSoapConverter extends SoapConverter
 
     private $converter;
 
+    private Inflector $inflector;
+
     public function __construct(PhpConverter $converter, array $baseNs = array())
     {
         $this->converter = $converter;
+        $this->inflector = InflectorFactory::create()->build();
         parent::__construct($baseNs);
     }
 
@@ -63,8 +67,8 @@ class PhpSoapConverter extends SoapConverter
 
             $this->classes['__' . spl_object_hash($message)] = $bodyClass = new PHPClass();
 
-            list ($name, $ns) = $this->findPHPName($message, Inflector::classify($hint));
-            $bodyClass->setName(Inflector::classify($name));
+            list ($name, $ns) = $this->findPHPName($message, $this->inflector->classify($hint));
+            $bodyClass->setName($this->inflector->classify($name));
             $bodyClass->setNamespace($ns . $this->baseNs[$service->getVersion()]['parts']);
             if ($message->getBody()->getParts()) {
                 $this->classes[$bodyClass->getFullName()] = $bodyClass;
@@ -73,7 +77,7 @@ class PhpSoapConverter extends SoapConverter
             $this->visitMessageParts($bodyClass, $message->getBody()->getParts());
 
             $envelopeClass = new PHPClass();
-            $envelopeClass->setName(Inflector::classify($name));
+            $envelopeClass->setName($this->inflector->classify($name));
             $envelopeClass->setNamespace($ns . $this->baseNs[$service->getVersion()]['messages']);
             $envelopeClass->setImplements(['GoetasWebservices\SoapServices\Metadata\Envelope\Envelope']);
             $this->classes[$envelopeClass->getFullName()] = $envelopeClass;
@@ -86,7 +90,7 @@ class PhpSoapConverter extends SoapConverter
 
             $property = new PHPProperty('header');
             $headerClass = new PHPClass();
-            $headerClass->setName(Inflector::classify($name));
+            $headerClass->setName($this->inflector->classify($name));
             $headerClass->setNamespace($ns . $this->baseNs[$service->getVersion()]['headers']);
 
             $this->classes[$headerClass->getFullName()] = $headerClass;
@@ -112,10 +116,10 @@ class PhpSoapConverter extends SoapConverter
             $property = new PHPProperty();
 
             if ($part->getElement()) {
-                $property->setName(Inflector::camelize($part->getElement()->getName()));
+                $property->setName($this->inflector->camelize($part->getElement()->getName()));
                 $property->setType($this->converter->visitElementDef($part->getElement()));
             } else {
-                $property->setName(Inflector::camelize($part->getName()));
+                $property->setName($this->inflector->camelize($part->getName()));
                 $property->setType($this->converter->visitType($part->getType()));
             }
 
